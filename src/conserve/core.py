@@ -1,6 +1,8 @@
 """Core API for Conserve."""
 
 import json as json_lib
+from abc import ABC, abstractmethod
+from io import StringIO
 from pathlib import Path
 
 import tomlkit
@@ -8,44 +10,27 @@ from deepmerge import Merger
 from ruamel.yaml import YAML
 
 # Import special types for format-preserving merge
-from tomlkit.toml_document import TOMLDocument
-from tomlkit.items import Table as TOMLTable
 from ruamel.yaml.comments import CommentedMap
+from tomlkit.items import Table as TOMLTable
+from tomlkit.toml_document import TOMLDocument
 
 
-def toml_merge_strategy(config, path, base, nxt):
-    """Merge strategy for tomlkit objects that preserves formatting."""
+def format_preserving_merge(config, path, base, nxt):
+    """Merge strategy that preserves formatting for TOML and YAML."""
     for key, value in nxt.items():
         if key not in base:
             base[key] = value
         else:
-            # For lists, check if original was multiline and preserve that
-            if isinstance(value, list):
-                # If replacing a list, try to preserve multiline format for longer lists
-                if len(value) > 2:
-                    import tomlkit
-
-                    arr = tomlkit.array()
-                    arr.multiline(True)
-                    for item in value:
-                        arr.append(item)
-                    base[key] = arr
-                else:
-                    base[key] = value
+            # Special handling for TOML lists to preserve multiline format
+            if isinstance(base, (TOMLDocument, TOMLTable)) and isinstance(value, list) and len(value) > 2:
+                arr = tomlkit.array()
+                arr.multiline(True)
+                for item in value:
+                    arr.append(item)
+                base[key] = arr
             else:
                 # Recursively merge nested structures
                 base[key] = config.value_strategy(path + [key], base[key], value)
-    return base
-
-
-def yaml_merge_strategy(config, path, base, nxt):
-    """Merge strategy for ruamel.yaml objects that preserves formatting."""
-    for key, value in nxt.items():
-        if key not in base:
-            base[key] = value
-        else:
-            # Recursively merge nested structures
-            base[key] = config.value_strategy(path + [key], base[key], value)
     return base
 
 
@@ -53,9 +38,9 @@ def yaml_merge_strategy(config, path, base, nxt):
 conserve_merger = Merger(
     [
         # Format-preserving strategies (higher priority)
-        (TOMLDocument, toml_merge_strategy),
-        (TOMLTable, toml_merge_strategy),
-        (CommentedMap, yaml_merge_strategy),
+        (TOMLDocument, format_preserving_merge),
+        (TOMLTable, format_preserving_merge),
+        (CommentedMap, format_preserving_merge),
         # Standard strategies
         (dict, ["merge"]),  # Dict recursive merge
         (list, ["override"]),  # List replace entirely
@@ -82,16 +67,25 @@ def merge_deep(*docs) -> dict:
     return result
 
 
-class StructuredHandle:
-    """Handle for structured documents (TOML/YAML/JSON)."""
+class BaseHandle(ABC):
+    """Base class for structured document handles."""
 
-    def __init__(self, path: str | Path, format: str):
+    def __init__(self, path: str | Path):
         self.path = Path(path)
-        self.format = format
         self.document = {}
         self._loaded = False
 
-    def load(self) -> "StructuredHandle":
+    @abstractmethod
+    def _parse(self, content: str):
+        """Parse content into document. Format-specific implementation."""
+        pass
+
+    @abstractmethod
+    def _dump(self) -> str:
+        """Dump document to string. Format-specific implementation."""
+        pass
+
+    def load(self) -> "BaseHandle":
         """Load content from disk and return self for chaining."""
         if not self.path.exists():
             self.document = {}
@@ -99,21 +93,7 @@ class StructuredHandle:
             return self
 
         content = self.path.read_text(encoding="utf-8")
-
-        if self.format == "toml":
-            self.document = tomlkit.parse(content)
-        elif self.format == "yaml":
-            yaml = YAML()
-            yaml.preserve_quotes = True
-            self.document = yaml.load(content) or {}
-        elif self.format == "json":
-            if content.strip():
-                self.document = json_lib.loads(content)
-            else:
-                self.document = {}
-        else:
-            raise ValueError(f"Unsupported format: {self.format}")
-
+        self._parse(content)
         self._loaded = True
         return self
 
@@ -122,35 +102,27 @@ class StructuredHandle:
         if not self._loaded:
             self.load()
         # Convert to plain dict for user manipulation
-        if hasattr(self.document, "unwrap"):  # tomlkit
-            return self.document.unwrap()
-        return dict(self.document)
+        return self.document.unwrap() if hasattr(self.document, "unwrap") else dict(self.document)
 
-    def replace(self, doc: dict) -> "StructuredHandle":
+    def replace(self, doc: dict) -> "BaseHandle":
         """Replace in-memory content with new document and return self."""
         if not self._loaded:
             self.load()
 
-        if self.format == "toml":
-            # For TOML, update existing document to preserve format
-            # Clear existing keys
-            for key in list(self.document.keys()):
-                del self.document[key]
-            # Add new keys
-            for key, value in doc.items():
-                self.document[key] = value
-        else:
-            self.document = doc
-
+        # Subclasses can override for format-specific handling
+        self._replace_impl(doc)
         return self
 
-    def merge(self, patch: dict) -> "StructuredHandle":
+    def _replace_impl(self, doc: dict):
+        """Default replace implementation. Can be overridden."""
+        self.document = doc
+
+    def merge(self, patch: dict) -> "BaseHandle":
         """Merge patch into in-memory document and return self."""
         if not self._loaded:
             self.load()
 
         # Use unified deepmerge for all formats
-        # The conserve_merger now handles format preservation
         self.document = conserve_merger.merge(self.document, patch)
         return self
 
@@ -162,60 +134,96 @@ class StructuredHandle:
         target_path = Path(path) if path else self.path
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if self.format == "toml":
-            content = tomlkit.dumps(self.document)
-        elif self.format == "yaml":
-            from io import StringIO
-
-            yaml = YAML()
-            yaml.preserve_quotes = True
-            yaml.width = 4096  # Prevent line wrapping
-            stream = StringIO()
-            yaml.dump(self.document, stream)
-            content = stream.getvalue()
-        elif self.format == "json":
-            content = json_lib.dumps(self.document, indent=2, ensure_ascii=False) + "\n"
-        else:
-            raise ValueError(f"Unsupported format: {self.format}")
-
+        content = self._dump()
         target_path.write_text(content, encoding="utf-8")
 
 
-def toml(path: str | Path) -> StructuredHandle:
-    """Create a TOML document handle."""
-    return StructuredHandle(path, "toml")
+class TOMLHandle(BaseHandle):
+    """Handle for TOML documents with format preservation."""
+
+    def _parse(self, content: str):
+        """Parse TOML content."""
+        self.document = tomlkit.parse(content)
+
+    def _dump(self) -> str:
+        """Dump to TOML string."""
+        return tomlkit.dumps(self.document)
+
+    def _replace_impl(self, doc: dict):
+        """TOML-specific replace to preserve format."""
+        # Clear and update to preserve TOML formatting
+        self.document.clear()
+        self.document.update(doc)
 
 
-def yaml(path: str | Path) -> StructuredHandle:
-    """Create a YAML document handle."""
-    return StructuredHandle(path, "yaml")
+class YAMLHandle(BaseHandle):
+    """Handle for YAML documents with format preservation."""
+
+    def __init__(self, path: str | Path):
+        super().__init__(path)
+        # Each instance has its own YAML configuration
+        self.yaml = YAML()
+        self.yaml.preserve_quotes = True
+        self.yaml.width = 4096  # Prevent line wrapping
+
+    def _parse(self, content: str):
+        """Parse YAML content."""
+        self.document = self.yaml.load(content) or {}
+
+    def _dump(self) -> str:
+        """Dump to YAML string."""
+        stream = StringIO()
+        self.yaml.dump(self.document, stream)
+        return stream.getvalue()
 
 
-def json(path: str | Path) -> StructuredHandle:
-    """Create a JSON document handle."""
-    return StructuredHandle(path, "json")
+class JSONHandle(BaseHandle):
+    """Handle for JSON documents."""
+
+    def _parse(self, content: str):
+        """Parse JSON content."""
+        self.document = json_lib.loads(content) if content.strip() else {}
+
+    def _dump(self) -> str:
+        """Dump to JSON string."""
+        return json_lib.dumps(self.document, indent=2, ensure_ascii=False) + "\n"
 
 
-def auto(path: str | Path) -> StructuredHandle:
-    """Create a document handle with auto-detected format."""
-    path = Path(path)
-    suffix = path.suffix.lower()
+class AutoHandle:
+    """Auto-detecting handle that creates appropriate format handler.
 
-    if suffix in (".toml",):
-        return toml(path)
-    elif suffix in (".yaml", ".yml"):
-        return yaml(path)
-    elif suffix in (".json",):
-        return json(path)
-    else:
-        # Try to detect by content
-        if path.exists():
-            content = path.read_text(encoding="utf-8").strip()
-            if content.startswith("{") or content.startswith("["):
-                return json(path)
-            elif content and "=" in content.split("\n")[0]:
-                return toml(path)
-            else:
-                return yaml(path)
-        else:
-            raise ValueError(f"Cannot auto-detect format for non-existent file: {path}")
+    Currently uses file extension detection.
+    Can be upgraded to use libmagic or other detection methods in the future.
+    """
+
+    # Format mapping table (easily extensible)
+    HANDLERS = {
+        ".toml": TOMLHandle,
+        ".yaml": YAMLHandle,
+        ".yml": YAMLHandle,
+        ".json": JSONHandle,
+    }
+
+    def __new__(cls, path: str | Path) -> BaseHandle:
+        """Create appropriate handle based on detected format."""
+        path = Path(path)
+
+        # Currently: extension-based detection
+        suffix = path.suffix.lower()
+        handler_class = cls.HANDLERS.get(suffix)
+
+        if not handler_class:
+            raise ValueError(f"Cannot detect format from extension '{suffix}' for file: {path}")
+
+        return handler_class(path)
+
+
+# Export public API
+__all__ = [
+    "TOMLHandle",
+    "YAMLHandle",
+    "JSONHandle",
+    "AutoHandle",
+    "BaseHandle",
+    "merge_deep",
+]

@@ -33,12 +33,12 @@ pixi run conserve list
 import conserve
 
 # Load and merge configurations
-base = conserve.toml("config.toml").load().read()
-local = conserve.toml("config.local.toml").load().read()
+base = conserve.TOMLHandle("config.toml").load().read()
+local = conserve.TOMLHandle("config.local.toml").load().read()
 merged = conserve.merge_deep(base, local)
 
 # Save with format preservation
-conserve.toml("runtime.toml").replace(merged).save()
+conserve.TOMLHandle("runtime.toml").replace(merged).save()
 ```
 
 ### CLI
@@ -64,8 +64,8 @@ import conserve
 
 def conserve_sync_dependencies():
     """Sync dependencies from pixi.toml to pyproject.toml"""
-    pixi = conserve.toml("pixi.toml").load().read()
-    pyproject = conserve.toml("pyproject.toml").load()
+    pixi = conserve.TOMLHandle("pixi.toml").load().read()
+    pyproject = conserve.TOMLHandle("pyproject.toml").load()
 
     # Your bootstrap logic here
     dependencies = extract_dependencies(pixi)

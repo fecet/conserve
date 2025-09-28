@@ -23,8 +23,8 @@ def conserve_sync_dependencies():
         print("Warning: pyproject.toml not found")
         return
 
-    pixi = conserve.toml(pixi_path).load().read()
-    pyproject = conserve.toml(pyproject_path).load()
+    pixi = conserve.TOMLHandle(pixi_path).load().read()
+    pyproject = conserve.TOMLHandle(pyproject_path).load()
 
     dependencies = []
 

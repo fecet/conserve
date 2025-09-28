@@ -47,14 +47,14 @@ from pathlib import Path
 def conserve_sync_local():
     \"\"\"Sync local config overrides.\"\"\"
     # Load base and local configs
-    base = conserve.toml("config.toml").load().read()
-    local = conserve.toml("config.local.toml").load().read()
+    base = conserve.TOMLHandle("config.toml").load().read()
+    local = conserve.TOMLHandle("config.local.toml").load().read()
 
     # Merge local overrides into base
     merged = conserve.merge_deep(base, local)
 
     # Save as runtime config
-    conserve.toml("config.runtime.toml").replace(merged).save()
+    conserve.TOMLHandle("config.runtime.toml").replace(merged).save()
 
 def conserve_update_ports():
     \"\"\"Update all port configurations.\"\"\"
@@ -64,7 +64,7 @@ def conserve_update_ports():
     for config_file in configs:
         path = Path(config_file)
         if path.exists():
-            handle = conserve.auto(path).load()
+            handle = conserve.AutoHandle(path).load()
             doc = handle.read()
 
             # Update port if server section exists
@@ -136,9 +136,9 @@ def conserve_build_manifest():
     \"\"\"Build deployment manifest from all configs.\"\"\"
 
     # Load configs from different formats
-    app = conserve.toml("app.toml").load().read()
-    deploy = conserve.yaml("deploy.yaml").load().read()
-    features = conserve.json("features.json").load().read()
+    app = conserve.TOMLHandle("app.toml").load().read()
+    deploy = conserve.YAMLHandle("deploy.yaml").load().read()
+    features = conserve.JSONHandle("features.json").load().read()
 
     # Build unified manifest
     manifest = {
@@ -151,8 +151,8 @@ def conserve_build_manifest():
     manifest["deployment"]["image"] = f"{app['app']['name'].lower()}:{app['app']['version']}"
 
     # Save as both YAML and JSON
-    conserve.yaml("manifest.yaml").replace(manifest).save()
-    conserve.json("manifest.json").replace(manifest).save()
+    conserve.YAMLHandle("manifest.yaml").replace(manifest).save()
+    conserve.JSONHandle("manifest.json").replace(manifest).save()
 """)
 
     # Run conserve
@@ -303,12 +303,12 @@ import conserve
 def conserve_sync_common():
     \"\"\"Sync common config to all services.\"\"\"
     # Single source of truth
-    source = conserve.toml("base.toml")
+    source = conserve.TOMLHandle("base.toml")
 
     # Multiple targets
     targets = [
-        conserve.yaml("app1.yaml"),
-        conserve.yaml("app2.yaml"),
+        conserve.YAMLHandle("app1.yaml"),
+        conserve.YAMLHandle("app2.yaml"),
     ]
 
     # Load source
@@ -326,7 +326,7 @@ def conserve_update_versions():
     new_version = "2.1.0"
 
     # Update base
-    base = conserve.toml("base.toml").load()
+    base = conserve.TOMLHandle("base.toml").load()
     base_doc = base.read()
     base_doc["common"]["version"] = new_version
     base.replace(base_doc).save()
@@ -335,7 +335,7 @@ def conserve_update_versions():
     for config_file in ["app1.yaml", "app2.yaml"]:
         from pathlib import Path
         if Path(config_file).exists():
-            handle = conserve.yaml(config_file).load()
+            handle = conserve.YAMLHandle(config_file).load()
             doc = handle.read()
             if "common" in doc and "version" in doc["common"]:
                 doc["common"]["version"] = new_version

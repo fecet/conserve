@@ -1,18 +1,20 @@
 """Conserve - Configuration fragment synchronizer with format preservation."""
 
 from .core import (
-    toml,
-    yaml,
-    json,
-    auto,
+    TOMLHandle,
+    YAMLHandle,
+    JSONHandle,
+    AutoHandle,
+    BaseHandle,
     merge_deep,
 )
 
 __all__ = [
-    "toml",
-    "yaml",
-    "json",
-    "auto",
+    "TOMLHandle",
+    "YAMLHandle",
+    "JSONHandle",
+    "AutoHandle",
+    "BaseHandle",
     "merge_deep",
 ]
 
