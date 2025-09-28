@@ -13,6 +13,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_8.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2025.8.3-hbd8a1cb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/colorama-0.4.6-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/deepmerge-2.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/docstring_parser-0.17.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/editables-0.5-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/eval_type_backport-0.2.2-pyha770c72_0.conda
@@ -48,6 +49,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyyaml-6.0.2-py312h178313f_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/readline-8.2-h8c095d6_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-14.1.0-pyhe01879c_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel.yaml-0.18.15-py312h4c3975b_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel.yaml.clib-0.2.12-py312h4c3975b_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/shtab-1.7.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_hd72426e_102.conda
@@ -62,9 +65,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.45.1-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-h280c20c_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.23.0-pyhd8ed1ab_0.conda
-      - pypi: https://files.pythonhosted.org/packages/2d/82/e5d2c1c67d19841e9edc74954c827444ae826978499bde3dfc1d007c8c11/deepmerge-2.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/d1/e5/f2a0621f1781b76a38194acae72f01e37b1941470407345b6e8653ad7640/ruamel.yaml-0.18.15-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/44/d0/3f68a86e006448fb6c005aee66565b9eb89014a70c491d70c08de597f8e4/ruamel.yaml.clib-0.2.12-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: ./
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -131,20 +131,18 @@ packages:
   - tyro
   requires_python: '>=3.12'
   editable: true
-- pypi: https://files.pythonhosted.org/packages/2d/82/e5d2c1c67d19841e9edc74954c827444ae826978499bde3dfc1d007c8c11/deepmerge-2.0-py3-none-any.whl
-  name: deepmerge
-  version: '2.0'
-  sha256: 6de9ce507115cff0bed95ff0ce9ecc31088ef50cbdf09bc90a09349a318b3d00
-  requires_dist:
-  - typing-extensions ; python_full_version < '3.10'
-  - validate-pyproject[all] ; extra == 'dev'
-  - pyupgrade ; extra == 'dev'
-  - black ; extra == 'dev'
-  - mypy ; extra == 'dev'
-  - pytest ; extra == 'dev'
-  - build ; extra == 'dev'
-  - twine ; extra == 'dev'
-  requires_python: '>=3.8'
+- conda: https://conda.anaconda.org/conda-forge/noarch/deepmerge-2.0-pyhd8ed1ab_1.conda
+  sha256: dacd8e8f93cd5cc7a115a3f26778600d8db23952c2d115f3d5d50e448e25998b
+  md5: 75c5496323e2ef172bfeec4651eb3e66
+  depends:
+  - python >=3.9
+  - typing-extensions
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/deepmerge?source=hash-mapping
+  size: 16053
+  timestamp: 1738159526140
 - conda: https://conda.anaconda.org/conda-forge/noarch/docstring_parser-0.17.0-pyhd8ed1ab_0.conda
   sha256: 3069a555097f084d3b7bc8f9efbb42f9907ecbfa24d310c63df9814a8df491af
   md5: ce49d3e5a7d20be2ba57a2c670bdd82e
@@ -587,21 +585,35 @@ packages:
   - pkg:pypi/rich?source=hash-mapping
   size: 201098
   timestamp: 1753436991345
-- pypi: https://files.pythonhosted.org/packages/d1/e5/f2a0621f1781b76a38194acae72f01e37b1941470407345b6e8653ad7640/ruamel.yaml-0.18.15-py3-none-any.whl
-  name: ruamel-yaml
-  version: 0.18.15
-  sha256: 148f6488d698b7a5eded5ea793a025308b25eca97208181b6a026037f391f701
-  requires_dist:
-  - ruamel-yaml-clib>=0.2.7 ; python_full_version < '3.14' and platform_python_implementation == 'CPython'
-  - ruamel-yaml-jinja2>=0.2 ; extra == 'jinja2'
-  - ryd ; extra == 'docs'
-  - mercurial>5.7 ; extra == 'docs'
-  requires_python: '>=3.8'
-- pypi: https://files.pythonhosted.org/packages/44/d0/3f68a86e006448fb6c005aee66565b9eb89014a70c491d70c08de597f8e4/ruamel.yaml.clib-0.2.12-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  name: ruamel-yaml-clib
-  version: 0.2.12
-  sha256: 95c3829bb364fdb8e0332c9931ecf57d9be3519241323c5274bd82f709cebc0c
-  requires_python: '>=3.9'
+- conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel.yaml-0.18.15-py312h4c3975b_1.conda
+  sha256: 11f0de9337430669870085619e7538a56fc093b77e0c950d10b9c3ee69d6b8bc
+  md5: 4b4e6e4507091de3adba4c44c537cd35
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=14
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  - ruamel.yaml.clib >=0.1.2
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/ruamel-yaml?source=hash-mapping
+  size: 269847
+  timestamp: 1756839057460
+- conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel.yaml.clib-0.2.12-py312h4c3975b_1.conda
+  sha256: 6edd3b228450cd614229700b41dc1615775b58961267e7017883eb5937264886
+  md5: 0b612e709fe8c0b0f45db418037a7424
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=14
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/ruamel-yaml-clib?source=hash-mapping
+  size: 139438
+  timestamp: 1756828829310
 - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
   sha256: 972560fcf9657058e3e1f97186cc94389144b46dbdf58c807ce62e83f977e863
   md5: 4de79c071274a53dcaf2a8c749d1499e

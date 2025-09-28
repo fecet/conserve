@@ -15,7 +15,8 @@ tomlkit = "*"
 tyro = "*"
 msgspec = "*"
 pytest = "*"
+deepmerge = "*"
+"ruamel.yaml" = "*"
 
 [pypi-dependencies]
 conserve = { path = ".", editable = true }
-deepmerge = "*"
