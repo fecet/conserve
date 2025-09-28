@@ -7,6 +7,27 @@ import urllib.request
 import urllib.error
 
 
+def normalize_pypi_name(name: str) -> str:
+    """Normalize PyPI package name according to PEP 503.
+
+    Converts to lowercase and replaces runs of [._-] with a single hyphen.
+    This ensures consistent naming for PyPI packages.
+
+    Examples:
+        ruamel.yaml → ruamel-yaml
+        ruamel_yaml → ruamel-yaml
+        Pillow → pillow
+    """
+    # Convert to lowercase
+    normalized = name.lower()
+    # Replace . and _ with -
+    normalized = normalized.replace(".", "-").replace("_", "-")
+    # Collapse multiple hyphens to single hyphen
+    while "--" in normalized:
+        normalized = normalized.replace("--", "-")
+    return normalized
+
+
 class CondaMapping:
     """Access Conda-PyPI package name mappings from parselmouth."""
 
@@ -69,9 +90,21 @@ class CondaMapping:
         return self._mapping_data.get(conda_name)
 
     def pypi_to_conda(self, pypi_name: str) -> Optional[str]:
-        """Convert a PyPI package name to Conda name."""
+        """Convert a PyPI package name to Conda name.
+
+        First tries with PEP 503 normalized name, then falls back to original name.
+        """
         reverse = self._build_reverse_mapping()
-        return reverse.get(pypi_name)
+
+        # Try with normalized name first (PEP 503)
+        normalized = normalize_pypi_name(pypi_name)
+        result = reverse.get(normalized)
+
+        # Fallback to original name if not found
+        if result is None:
+            result = reverse.get(pypi_name)
+
+        return result
 
     def search(self, pattern: str) -> Dict[str, str]:
         """Search for mappings matching a pattern."""

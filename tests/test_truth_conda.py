@@ -4,6 +4,7 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 from conserve import truth
+from conserve.truth.conda import normalize_pypi_name
 
 
 class TestCondaMapping:
@@ -195,3 +196,50 @@ class TestModuleLevelFunctions:
     def test_reverse_mapping_alias(self):
         """Test reverse_mapping function (alias for to_conda)."""
         assert truth.conda.reverse_mapping("torch") == "pytorch"
+
+
+class TestPEP503Normalization:
+    """Test PEP 503 normalization functionality."""
+
+    def test_normalize_pypi_name(self):
+        """Test PEP 503 normalization of PyPI package names."""
+        test_cases = [
+            # (input, expected)
+            ("ruamel.yaml", "ruamel-yaml"),
+            ("ruamel_yaml", "ruamel-yaml"),
+            ("Pillow", "pillow"),
+            ("msgpack-python", "msgpack-python"),
+            ("beautifulsoup4", "beautifulsoup4"),
+            ("my.package_name", "my-package-name"),
+            ("My__Package..Name", "my-package-name"),
+            ("package---name", "package-name"),
+        ]
+
+        for input_name, expected in test_cases:
+            result = normalize_pypi_name(input_name)
+            assert result == expected, f"Failed for {input_name}: got {result}, expected {expected}"
+
+    @pytest.fixture
+    def mock_mapping_with_normalized(self):
+        """Mock mapping data with normalized names."""
+        return {
+            "pytorch": "torch",
+            "pillow": "pillow",
+            "ruamel.yaml": "ruamel-yaml",  # Normalized form in mapping
+            "beautifulsoup4": "beautifulsoup4",
+        }
+
+    def test_pypi_to_conda_with_normalization(self, tmp_path, mock_mapping_with_normalized):
+        """Test that pypi_to_conda handles normalized names correctly."""
+        mapper = truth.conda.CondaMapping(cache_dir=tmp_path)
+        mapper._mapping_data = mock_mapping_with_normalized
+
+        # Test with various forms of ruamel.yaml
+        assert mapper.pypi_to_conda("ruamel.yaml") == "ruamel.yaml"  # Should find via normalization
+        assert mapper.pypi_to_conda("ruamel_yaml") == "ruamel.yaml"  # Should find via normalization
+        assert mapper.pypi_to_conda("ruamel-yaml") == "ruamel.yaml"  # Direct match after normalization
+
+        # Test case sensitivity
+        assert mapper.pypi_to_conda("Pillow") == "pillow"
+        assert mapper.pypi_to_conda("PILLOW") == "pillow"
+        assert mapper.pypi_to_conda("pillow") == "pillow"
