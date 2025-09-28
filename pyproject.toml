@@ -18,11 +18,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = [
-    "tyro",
-    "tomlkit",
-    "ruamel.yaml",
-]
+dependencies = ["deepmerge", "msgspec", "ruamel.yaml", "tomlkit", "tyro"]
 
 [project.scripts]
 conserve = "conserve.cli:main"
@@ -30,6 +26,8 @@ conserve = "conserve.cli:main"
 [project.urls]
 Repository = "https://github.com/fecet/conserve"
 Issues = "https://github.com/fecet/conserve/issues"
+
+
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/conserve"]

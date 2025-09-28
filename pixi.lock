@@ -122,11 +122,13 @@ packages:
 - pypi: ./
   name: conserve
   version: 0.1.0
-  sha256: 14345de66d92fb1671566e9a3b5983af6295dfe094f7a14a83424f37382c9d89
+  sha256: 57bf8546a6faefdfcd5f6d9498b8d4b5d89593e9b8d5e1b6784bf3b765c957c0
   requires_dist:
-  - tyro
-  - tomlkit
+  - deepmerge
+  - msgspec
   - ruamel-yaml
+  - tomlkit
+  - tyro
   requires_python: '>=3.12'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/2d/82/e5d2c1c67d19841e9edc74954c827444ae826978499bde3dfc1d007c8c11/deepmerge-2.0-py3-none-any.whl

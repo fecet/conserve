@@ -7,9 +7,56 @@ import tomlkit
 from deepmerge import Merger
 from ruamel.yaml import YAML
 
+# Import special types for format-preserving merge
+from tomlkit.toml_document import TOMLDocument
+from tomlkit.items import Table as TOMLTable
+from ruamel.yaml.comments import CommentedMap
+
+
+def toml_merge_strategy(config, path, base, nxt):
+    """Merge strategy for tomlkit objects that preserves formatting."""
+    for key, value in nxt.items():
+        if key not in base:
+            base[key] = value
+        else:
+            # For lists, check if original was multiline and preserve that
+            if isinstance(value, list):
+                # If replacing a list, try to preserve multiline format for longer lists
+                if len(value) > 2:
+                    import tomlkit
+
+                    arr = tomlkit.array()
+                    arr.multiline(True)
+                    for item in value:
+                        arr.append(item)
+                    base[key] = arr
+                else:
+                    base[key] = value
+            else:
+                # Recursively merge nested structures
+                base[key] = config.value_strategy(path + [key], base[key], value)
+    return base
+
+
+def yaml_merge_strategy(config, path, base, nxt):
+    """Merge strategy for ruamel.yaml objects that preserves formatting."""
+    for key, value in nxt.items():
+        if key not in base:
+            base[key] = value
+        else:
+            # Recursively merge nested structures
+            base[key] = config.value_strategy(path + [key], base[key], value)
+    return base
+
+
 # Configure merger according to spec: dict recursive, list/scalar replace
 conserve_merger = Merger(
     [
+        # Format-preserving strategies (higher priority)
+        (TOMLDocument, toml_merge_strategy),
+        (TOMLTable, toml_merge_strategy),
+        (CommentedMap, yaml_merge_strategy),
+        # Standard strategies
         (dict, ["merge"]),  # Dict recursive merge
         (list, ["override"]),  # List replace entirely
     ],
@@ -85,8 +132,11 @@ class StructuredHandle:
             self.load()
 
         if self.format == "toml":
-            # Keep as tomlkit document for format preservation
-            self.document = tomlkit.document()
+            # For TOML, update existing document to preserve format
+            # Clear existing keys
+            for key in list(self.document.keys()):
+                del self.document[key]
+            # Add new keys
             for key, value in doc.items():
                 self.document[key] = value
         else:
@@ -99,12 +149,10 @@ class StructuredHandle:
         if not self._loaded:
             self.load()
 
-        # Get plain dict for merging
-        current = self.read()
-        merged = merge_deep(current, patch)
-
-        # Replace with merged content
-        return self.replace(merged)
+        # Use unified deepmerge for all formats
+        # The conserve_merger now handles format preservation
+        self.document = conserve_merger.merge(self.document, patch)
+        return self
 
     def save(self, path: str | Path | None = None) -> None:
         """Save in-memory content to file (default: original path)."""
