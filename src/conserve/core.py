@@ -1,7 +1,6 @@
 """Core API for Conserve."""
 
 import json as json_lib
-from abc import ABC, abstractmethod
 from io import StringIO
 from pathlib import Path
 
@@ -67,7 +66,7 @@ def merge_deep(*docs) -> dict:
     return result
 
 
-class BaseHandle(ABC):
+class BaseHandle:
     """Base class for structured document handles."""
 
     def __init__(self, path: str | Path):
@@ -75,41 +74,37 @@ class BaseHandle(ABC):
         self.document = {}
         self._loaded = False
 
-    @abstractmethod
     def _parse(self, content: str):
         """Parse content into document. Format-specific implementation."""
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def _dump(self) -> str:
         """Dump document to string. Format-specific implementation."""
-        pass
+        raise NotImplementedError
+
+    def _ensure_loaded(self):
+        """Ensure document is loaded."""
+        if not self._loaded:
+            self.load()
 
     def load(self) -> "BaseHandle":
         """Load content from disk and return self for chaining."""
-        if not self.path.exists():
+        if self.path.exists():
+            content = self.path.read_text(encoding="utf-8")
+            self._parse(content)
+        else:
             self.document = {}
-            self._loaded = True
-            return self
-
-        content = self.path.read_text(encoding="utf-8")
-        self._parse(content)
         self._loaded = True
         return self
 
     def read(self) -> dict:
         """Return current in-memory document."""
-        if not self._loaded:
-            self.load()
-        # Convert to plain dict for user manipulation
+        self._ensure_loaded()
         return self.document.unwrap() if hasattr(self.document, "unwrap") else dict(self.document)
 
     def replace(self, doc: dict) -> "BaseHandle":
         """Replace in-memory content with new document and return self."""
-        if not self._loaded:
-            self.load()
-
-        # Subclasses can override for format-specific handling
+        self._ensure_loaded()
         self._replace_impl(doc)
         return self
 
@@ -119,39 +114,28 @@ class BaseHandle(ABC):
 
     def merge(self, patch: dict) -> "BaseHandle":
         """Merge patch into in-memory document and return self."""
-        if not self._loaded:
-            self.load()
-
-        # Use unified deepmerge for all formats
+        self._ensure_loaded()
         self.document = conserve_merger.merge(self.document, patch)
         return self
 
     def save(self, path: str | Path | None = None) -> None:
         """Save in-memory content to file (default: original path)."""
-        if not self._loaded:
-            raise RuntimeError("Cannot save without loading or modifying first")
-
+        self._ensure_loaded()
         target_path = Path(path) if path else self.path
         target_path.parent.mkdir(parents=True, exist_ok=True)
-
-        content = self._dump()
-        target_path.write_text(content, encoding="utf-8")
+        target_path.write_text(self._dump(), encoding="utf-8")
 
 
 class TOMLHandle(BaseHandle):
     """Handle for TOML documents with format preservation."""
 
     def _parse(self, content: str):
-        """Parse TOML content."""
         self.document = tomlkit.parse(content)
 
     def _dump(self) -> str:
-        """Dump to TOML string."""
         return tomlkit.dumps(self.document)
 
     def _replace_impl(self, doc: dict):
-        """TOML-specific replace to preserve format."""
-        # Clear and update to preserve TOML formatting
         self.document.clear()
         self.document.update(doc)
 
@@ -167,11 +151,9 @@ class YAMLHandle(BaseHandle):
         self.yaml.width = 4096  # Prevent line wrapping
 
     def _parse(self, content: str):
-        """Parse YAML content."""
         self.document = self.yaml.load(content) or {}
 
     def _dump(self) -> str:
-        """Dump to YAML string."""
         stream = StringIO()
         self.yaml.dump(self.document, stream)
         return stream.getvalue()
@@ -181,21 +163,18 @@ class JSONHandle(BaseHandle):
     """Handle for JSON documents."""
 
     def _parse(self, content: str):
-        """Parse JSON content."""
         self.document = json_lib.loads(content) if content.strip() else {}
 
     def _dump(self) -> str:
-        """Dump to JSON string."""
         return json_lib.dumps(self.document, indent=2, ensure_ascii=False) + "\n"
 
 
-class AutoHandle:
-    """Auto-detecting handle that creates appropriate format handler.
+def AutoHandle(path: str | Path) -> BaseHandle:
+    """Auto-detecting factory that creates appropriate format handler.
 
     Currently uses file extension detection.
     Can be upgraded to use libmagic or other detection methods in the future.
     """
-
     # Format mapping table (easily extensible)
     HANDLERS = {
         ".toml": TOMLHandle,
@@ -204,18 +183,14 @@ class AutoHandle:
         ".json": JSONHandle,
     }
 
-    def __new__(cls, path: str | Path) -> BaseHandle:
-        """Create appropriate handle based on detected format."""
-        path = Path(path)
+    path = Path(path)
+    suffix = path.suffix.lower()
+    handler_class = HANDLERS.get(suffix)
 
-        # Currently: extension-based detection
-        suffix = path.suffix.lower()
-        handler_class = cls.HANDLERS.get(suffix)
+    if not handler_class:
+        raise ValueError(f"Cannot detect format from extension '{suffix}' for file: {path}")
 
-        if not handler_class:
-            raise ValueError(f"Cannot detect format from extension '{suffix}' for file: {path}")
-
-        return handler_class(path)
+    return handler_class(path)
 
 
 # Export public API

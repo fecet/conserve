@@ -14,9 +14,7 @@ def list_tasks(root: Path | None = None) -> None:
     Args:
         root: Root directory to search (default: current directory)
     """
-    if root is None:
-        root = Path.cwd()
-
+    root = root or Path.cwd()
     print(f"Discovering tasks in: {root}\n")
 
     tasks = discover_all_tasks(root)
@@ -45,8 +43,7 @@ def run(
         root: Root directory to search (default: current directory)
         dry_run: Preview what would be run without executing
     """
-    if root is None:
-        root = Path.cwd()
+    root = root or Path.cwd()
 
     all_tasks = discover_all_tasks(root)
     if not all_tasks:
@@ -63,8 +60,7 @@ def run(
             ]
             if not matches:
                 print(f"Warning: No task matching '{task_pattern}'")
-            else:
-                tasks_to_run.extend(matches)
+            tasks_to_run.extend(matches)
     else:
         tasks_to_run = all_tasks
 
@@ -83,8 +79,7 @@ def run(
                 print("    ✓ Success")
             except Exception as e:
                 print(f"    ✗ Failed: {e}")
-                print("\n    Traceback:")
-                traceback.print_exc()
+                traceback.print_exc(limit=3)
         else:
             print("    (skipped - dry run)")
 
@@ -96,8 +91,7 @@ def info(task: str, root: Path | None = None) -> None:
         task: Task identifier (format: "module:function" or just "function")
         root: Root directory to search (default: current directory)
     """
-    if root is None:
-        root = Path.cwd()
+    root = root or Path.cwd()
 
     all_tasks = discover_all_tasks(root)
 
@@ -119,22 +113,18 @@ def info(task: str, root: Path | None = None) -> None:
         # Show source location
         import inspect
 
-        try:
-            source_file = inspect.getfile(func)
-            source_lines, line_num = inspect.getsourcelines(func)
-            print(f"\nSource: {source_file}:{line_num}")
-            print("".join(source_lines[:10]))  # Show first 10 lines
-            if len(source_lines) > 10:
-                print(f"... ({len(source_lines) - 10} more lines)")
-        except Exception:
-            pass
+        source_file = inspect.getfile(func)
+        source_lines, line_num = inspect.getsourcelines(func)
+        print(f"\nSource: {source_file}:{line_num}")
+        print("".join(source_lines[:10]))  # Show first 10 lines
+        if len(source_lines) > 10:
+            print(f"... ({len(source_lines) - 10} more lines)")
 
 
 def main() -> None:
     """Conserve - Configuration fragment synchronizer."""
     import sys
 
-    # Simple argument parsing since tyro has issues with subcommands
     if len(sys.argv) < 2:
         print("Usage: conserve <command> [options]")
         print("\nCommands:")
@@ -144,13 +134,10 @@ def main() -> None:
         sys.exit(1)
 
     command = sys.argv[1]
+    commands = {"list": list_tasks, "run": run, "info": info}
 
-    if command == "list":
-        tyro.cli(list_tasks, args=sys.argv[2:])
-    elif command == "run":
-        tyro.cli(run, args=sys.argv[2:])
-    elif command == "info":
-        tyro.cli(info, args=sys.argv[2:])
+    if command in commands:
+        tyro.cli(commands[command], args=sys.argv[2:])
     else:
         print(f"Unknown command: {command}")
         print("Use 'conserve --help' for usage information")
