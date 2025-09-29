@@ -1,10 +1,9 @@
 """Conda package information and Conda-PyPI mapping."""
 
-import json
 from pathlib import Path
 from typing import Optional, Dict, List, Union
-import urllib.request
-import urllib.error
+
+from .utils import CachedFetcher
 
 
 def normalize_pypi_name(name: str) -> str:
@@ -40,54 +39,33 @@ class CondaMapping:
             cache_dir: Directory for caching mapping data. Defaults to /tmp/conserve.
             ttl: Cache time-to-live in seconds (not implemented yet).
         """
-        self.cache_dir = Path(cache_dir) if cache_dir else Path("/tmp/conserve")
-        self.cache_file = self.cache_dir / "conda_pypi_mapping.json"
-        self.ttl = ttl
+        self._fetcher = CachedFetcher(
+            url=self.MAPPING_URL, cache_dir=cache_dir, cache_filename="conda_pypi_mapping.json", ttl=ttl
+        )
         self._mapping_data: Optional[Dict[str, str]] = None
         self._reverse_mapping: Optional[Dict[str, str]] = None
-
-    def _fetch_mapping(self, force: bool = False) -> Dict[str, str]:
-        """Fetch the Conda-PyPI mapping from parselmouth."""
-        if not force and self.cache_file.exists():
-            with open(self.cache_file, "r") as f:
-                self._mapping_data = json.load(f)
-            return self._mapping_data
-
-        try:
-            with urllib.request.urlopen(self.MAPPING_URL, timeout=30) as response:
-                self._mapping_data = json.loads(response.read())
-
-            # Save to cache
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-            with open(self.cache_file, "w") as f:
-                json.dump(self._mapping_data, f)
-
-            return self._mapping_data
-
-        except Exception:
-            # Return empty dict on error
-            return {}
 
     def _ensure_loaded(self) -> None:
         """Ensure mapping data is loaded."""
         if self._mapping_data is None:
-            self._fetch_mapping()
+            self._mapping_data = self._fetcher.get_data()
 
     def _build_reverse_mapping(self) -> Dict[str, str]:
         """Build PyPI to Conda reverse mapping."""
         if self._reverse_mapping is None:
             self._ensure_loaded()
             self._reverse_mapping = {}
-            for conda, pypi in self._mapping_data.items():
-                # Only add if not already present (first occurrence wins)
-                if pypi not in self._reverse_mapping:
-                    self._reverse_mapping[pypi] = conda
+            if self._mapping_data:
+                for conda, pypi in self._mapping_data.items():
+                    # Only add if not already present (first occurrence wins)
+                    if pypi not in self._reverse_mapping:
+                        self._reverse_mapping[pypi] = conda
         return self._reverse_mapping
 
     def conda_to_pypi(self, conda_name: str) -> Optional[str]:
         """Convert a Conda package name to PyPI name."""
         self._ensure_loaded()
-        return self._mapping_data.get(conda_name)
+        return self._mapping_data.get(conda_name) if self._mapping_data else None
 
     def pypi_to_conda(self, pypi_name: str) -> Optional[str]:
         """Convert a PyPI package name to Conda name.
@@ -110,21 +88,21 @@ class CondaMapping:
         """Search for mappings matching a pattern."""
         self._ensure_loaded()
         results = {}
-        pattern_lower = pattern.lower()
-        for conda, pypi in self._mapping_data.items():
-            if pattern_lower in conda.lower() or pattern_lower in pypi.lower():
-                results[conda] = pypi
+        if self._mapping_data:
+            pattern_lower = pattern.lower()
+            for conda, pypi in self._mapping_data.items():
+                if pattern_lower in conda.lower() or pattern_lower in pypi.lower():
+                    results[conda] = pypi
         return results
 
     def get_all(self) -> Dict[str, str]:
         """Get all Conda to PyPI mappings."""
         self._ensure_loaded()
-        return self._mapping_data.copy()
+        return self._mapping_data.copy() if self._mapping_data else {}
 
     def clear_cache(self) -> None:
         """Clear the local cache."""
-        if self.cache_file.exists():
-            self.cache_file.unlink()
+        self._fetcher.clear_cache()
         self._mapping_data = None
         self._reverse_mapping = None
 
@@ -199,33 +177,3 @@ def search(pattern: str) -> Dict[str, str]:
     """
     mapper = _get_mapper()
     return mapper.search(pattern)
-
-
-def mapping(conda_name: str) -> Optional[str]:
-    """Get PyPI name for a Conda package (alias for to_pypi).
-
-    Args:
-        conda_name: Conda package name
-
-    Returns:
-        PyPI package name or None if not found
-    """
-    return to_pypi(conda_name)
-
-
-def reverse_mapping(pypi_name: str) -> Optional[str]:
-    """Get Conda name for a PyPI package (alias for to_conda).
-
-    Args:
-        pypi_name: PyPI package name
-
-    Returns:
-        Conda package name or None if not found
-    """
-    return to_conda(pypi_name)
-
-
-def clear_cache() -> None:
-    """Clear the mapping cache."""
-    mapper = _get_mapper()
-    mapper.clear_cache()
