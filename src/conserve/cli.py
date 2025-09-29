@@ -1,5 +1,6 @@
 """CLI interface for Conserve."""
 
+import traceback
 from pathlib import Path
 
 import tyro
@@ -82,6 +83,8 @@ def run(
                 print("    ✓ Success")
             except Exception as e:
                 print(f"    ✗ Failed: {e}")
+                print("\n    Traceback:")
+                traceback.print_exc()
         else:
             print("    (skipped - dry run)")
 

@@ -19,6 +19,8 @@ deepmerge = "*"
 "ruamel.yaml" = "*"
 datamodel-code-generator = "*"
 packaging = "*"
+ipython = "*"
 
 [pypi-dependencies]
 conserve = { path = ".", editable = true }
+schemastore = "*"

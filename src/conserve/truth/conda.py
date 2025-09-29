@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional, Dict, List, Union
 
-from .utils import CachedFetcher
+from .utils import CachedFetcher, MappingQuery
 
 
 def normalize_pypi_name(name: str) -> str:
@@ -119,7 +119,48 @@ def _get_mapper() -> CondaMapping:
     return _default_mapper
 
 
-# Simple API functions
+# Simple API functions with unified query interface
+def query_pypi(conda_names: Union[str, List[str]]) -> Union[Optional[str], List[Optional[str]]]:
+    """Query PyPI package name(s) from Conda name(s) using unified interface.
+
+    Args:
+        conda_names: Single package name or list of names
+
+    Returns:
+        PyPI name(s) or None for unknown packages
+
+    Examples:
+        >>> query_pypi("pytorch")
+        "torch"
+        >>> query_pypi(["numpy", "pytorch", "pillow"])
+        ["numpy", "torch", "Pillow"]
+    """
+    mapper = _get_mapper()
+    query_tool = MappingQuery(mapper.conda_to_pypi)
+    return query_tool.query(conda_names)
+
+
+def query_conda(pypi_names: Union[str, List[str]]) -> Union[Optional[str], List[Optional[str]]]:
+    """Query Conda package name(s) from PyPI name(s) using unified interface.
+
+    Args:
+        pypi_names: Single package name or list of names
+
+    Returns:
+        Conda name(s) or None for unknown packages
+
+    Examples:
+        >>> query_conda("torch")
+        "pytorch"
+        >>> query_conda(["numpy", "torch", "Pillow"])
+        ["numpy", "pytorch", "pillow"]
+    """
+    mapper = _get_mapper()
+    query_tool = MappingQuery(mapper.pypi_to_conda)
+    return query_tool.query(pypi_names)
+
+
+# Backward compatibility - keep original API
 def to_pypi(conda_names: Union[str, List[str]]) -> Union[Optional[str], List[Optional[str]]]:
     """Convert Conda package name(s) to PyPI name(s).
 
@@ -135,10 +176,7 @@ def to_pypi(conda_names: Union[str, List[str]]) -> Union[Optional[str], List[Opt
         >>> to_pypi(["numpy", "pytorch", "pillow"])
         ["numpy", "torch", "Pillow"]
     """
-    mapper = _get_mapper()
-    if isinstance(conda_names, str):
-        return mapper.conda_to_pypi(conda_names)
-    return [mapper.conda_to_pypi(name) for name in conda_names]
+    return query_pypi(conda_names)
 
 
 def to_conda(pypi_names: Union[str, List[str]]) -> Union[Optional[str], List[Optional[str]]]:
@@ -156,10 +194,7 @@ def to_conda(pypi_names: Union[str, List[str]]) -> Union[Optional[str], List[Opt
         >>> to_conda(["numpy", "torch", "Pillow"])
         ["numpy", "pytorch", "pillow"]
     """
-    mapper = _get_mapper()
-    if isinstance(pypi_names, str):
-        return mapper.pypi_to_conda(pypi_names)
-    return [mapper.pypi_to_conda(name) for name in pypi_names]
+    return query_conda(pypi_names)
 
 
 def search(pattern: str) -> Dict[str, str]:

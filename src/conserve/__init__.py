@@ -9,6 +9,7 @@ from .core import (
     merge_deep,
 )
 from . import truth
+from .utils import File
 
 __all__ = [
     "TOMLHandle",
@@ -18,6 +19,7 @@ __all__ = [
     "BaseHandle",
     "merge_deep",
     "truth",
+    "File",
 ]
 
 __version__ = "0.1.0"
