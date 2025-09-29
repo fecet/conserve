@@ -1,7 +1,12 @@
-"""JSON Schema Store integration using schemastore package."""
+"""JSON Schema Store integration using schemastore package.
+
+Provide lightweight query/search built on top of the upstream catalog.
+Adds name→content resolution and makes it the default for `query`.
+"""
 
 import schemastore as _schemastore
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union
+import schemastore as _ss
 from .utils import MappingQuery
 
 # Cache for the store and mapping
@@ -60,52 +65,30 @@ def _get_lookup_func():
     return _lookup_func
 
 
-# Main API - just query
-def query(names: Union[str, List[str]]) -> Union[Optional[str], List[Optional[str]]]:
-    """Query schema URL(s) by name(s).
+def _get_content_lookup_func():
+    """Return a callable that maps schema name → JSON content (dict)."""
+    url_lookup = _get_lookup_func()
+    registry = _ss.registry()
 
-    Args:
-        names: Single schema name or list of names
+    def lookup(name: str) -> Optional[dict]:
+        url = url_lookup(name)
+        if not url:
+            return None
+        try:
+            return registry.get_or_retrieve(url).value.contents  # type: ignore[no-any-return]
+        except Exception:
+            return None
 
-    Returns:
-        Schema URL(s) or None for not found schemas
+    return lookup
 
-    Examples:
-        >>> query("package.json")
-        "https://www.schemastore.org/package.json"
-        >>> query(["package.json", "tsconfig", "unknown"])
-        ["https://...", "https://...", None]
+
+def query(
+    names: Union[str, List[str]],
+) -> Union[Optional[dict], List[Optional[dict]]]:
+    """Query schema by name(s).
+
+    Returns JSON content (dict) for each name.
+    Returns None for schemas that cannot be found or retrieved.
     """
-    query_tool = MappingQuery(_get_lookup_func())
-    return query_tool.query(names)
-
-
-# Optional: search function for discovery
-def search(pattern: str) -> Dict[str, str]:
-    """Search schemas by pattern in name or description.
-
-    Args:
-        pattern: Search pattern (case-insensitive)
-
-    Returns:
-        Dictionary of matching schema names to URLs
-
-    Example:
-        >>> search("docker")
-        {"docker-compose.yml": "https://...", ...}
-    """
-    if _store is None:
-        _get_lookup_func()  # Initialize if needed
-
-    results = {}
-    pattern_lower = pattern.lower()
-
-    for schema in _store.catalog.get("schemas", []):
-        name = schema.get("name", "")
-        desc = schema.get("description", "")
-        url = schema.get("url")
-
-        if url and (pattern_lower in name.lower() or pattern_lower in desc.lower()):
-            results[name] = url
-
-    return results
+    tool = MappingQuery(_get_content_lookup_func())
+    return tool.query(names)

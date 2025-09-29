@@ -1,13 +1,11 @@
 #!/usr/bin/env python
-"""Bootstrap configuration for Conserve project.
 
-This file synchronizes dependencies from pyproject.toml to pixi.toml,
-enabling the project to be self-hosted using its own configuration management.
-Uses truth.conda for accurate PyPI to Conda package name conversion.
-"""
 
 import conserve
+from pathlib import Path
 from packaging.requirements import Requirement
+from datamodel_code_generator import InputFileType, DataModelType, PythonVersion, generate
+import json
 
 
 def conserve_sync_dependencies():
@@ -31,7 +29,7 @@ def conserve_sync_dependencies():
         version = str(req.specifier) or "*"
 
         # Try PyPI to Conda conversion (now handles normalization internally)
-        conda_name = conserve.truth.conda.to_conda(pkg_name)
+        conda_name = conserve.truth.conda.query_conda(pkg_name)
 
         if conda_name:
             # Package exists in Conda (with mapped or same name)
@@ -53,3 +51,24 @@ def conserve_sync_dependencies():
     print(f"  Total PyPI dependencies: {len(pypi_deps)}")
     print(f"  → Conda dependencies: {len(conda_deps)}")
     print(f"  → PyPI-only dependencies: {len(pypi_only_deps)}")
+
+
+def conserve_generate_models() -> None:
+    """Generate Pixi models via truth.schemastore and datamodel-code-generator (Python API)."""
+
+    # Get content from schemastore
+    content = conserve.truth.schemastore.query("pixi.toml")
+
+    schema_file = conserve.File()
+    schema_file.write_text(json.dumps(content, indent=2))
+
+    generate(
+        input_=schema_file.path,
+        input_file_type=InputFileType.JsonSchema,
+        output=Path("src/conserve/model") / "pixi.py",
+        output_model_type=DataModelType.PydanticV2BaseModel,
+        target_python_version=PythonVersion.PY_312,
+        use_union_operator=True,  # Use | instead of Union
+        collapse_root_models=False,  # Keep structure for complex schemas
+        use_default_kwarg=True,  # Use default= instead of default_factory=
+    )

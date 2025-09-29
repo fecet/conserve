@@ -25,6 +25,7 @@
 - Python `>=3.12`，Ruff 行宽 120；使用现代类型注解（PEP 585）、`pathlib` 与 f-string；优先 `dataclass`，复杂结构可用 `msgspec`。
 - 仅对关键代码添加英文注释；避免多余抽象，遵循 DCY 原则。
 - 代码格式与静态检查：`pixi run pre-commit run -a`（`ruff-format` 与 `ruff --fix`）。
+- 目前项目正在快速演进中, 不要为了兼容性而过度设计, 重构时不用考虑向后兼容。   
 
 ## Testing Guidelines
 - 框架：Pytest。测试命名 `tests/test_*.py`。新增特性或修复 MUST 附带测试；回归问题 MUST 先复现。

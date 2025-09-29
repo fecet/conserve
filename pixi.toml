@@ -20,6 +20,8 @@ deepmerge = "*"
 datamodel-code-generator = "*"
 packaging = "*"
 ipython = "*"
+fsspec = "*"
+universal-pathlib = "*"
 
 [pypi-dependencies]
 conserve = { path = ".", editable = true }
