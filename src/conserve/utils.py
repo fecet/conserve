@@ -5,6 +5,19 @@ from pathlib import Path
 import tempfile
 from typing import Optional
 import os
+import unicodedata
+import re
+
+
+def to_valid_filename(name: str) -> str:
+    # Normalize Unicode (NFKD) and remove accents
+    name = unicodedata.normalize("NFKD", name)
+    name = name.encode("ascii", "ignore").decode("ascii")
+    # Remove non-word characters except spaces and hyphens
+    name = re.sub(r"[^\w\s-]", "", name).strip()
+    # Replace spaces and hyphens with underscores
+    name = re.sub(r"[-\s]+", "_", name)
+    return name.lower()
 
 
 class File:
