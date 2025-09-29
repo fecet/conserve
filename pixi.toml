@@ -17,6 +17,8 @@ msgspec = "*"
 pytest = "*"
 deepmerge = "*"
 "ruamel.yaml" = "*"
+datamodel-code-generator = "*"
+packaging = "*"
 
 [pypi-dependencies]
 conserve = { path = ".", editable = true }
