@@ -71,11 +71,9 @@ def merge_deep(*docs) -> dict:
 class BaseHandle:
     """Base class for structured document handles supporting both local and remote files."""
 
-    def __init__(self, path: str | Path, *, cache_ttl: int = 0):
-        # Use File to unify local/remote handling
-        self.file = File(path)
-        # Use cached version if TTL provided, otherwise use file directly
-        self._reader = self.file.cache(cache_ttl) if cache_ttl else self.file
+    def __init__(self, path: str | Path | File):
+        # Accept File instance or path
+        self.file = path if isinstance(path, File) else File(path)
         self.document = {}
         self._loaded = False
 
@@ -94,8 +92,8 @@ class BaseHandle:
 
     def load(self) -> "BaseHandle":
         """Load content from disk or remote location and return self for chaining."""
-        if self._reader.exists():
-            content = self._reader.read_text(encoding="utf-8")
+        if self.file.exists():
+            content = self.file.read_text(encoding="utf-8")
             self._parse(content)
         else:
             self.document = {}
@@ -152,8 +150,8 @@ class TOMLHandle(BaseHandle):
 class YAMLHandle(BaseHandle):
     """Handle for YAML documents with format preservation."""
 
-    def __init__(self, path: str | Path, *, cache_ttl: int = 0):
-        super().__init__(path, cache_ttl=cache_ttl)
+    def __init__(self, path: str | Path | File):
+        super().__init__(path)
         # Each instance has its own YAML configuration
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
