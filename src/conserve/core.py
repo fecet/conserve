@@ -13,6 +13,8 @@ from ruamel.yaml.comments import CommentedMap
 from tomlkit.items import Table as TOMLTable
 from tomlkit.toml_document import TOMLDocument
 
+from .utils import File
+
 
 def format_preserving_merge(config, path, base, nxt):
     """Merge strategy that preserves formatting for TOML and YAML."""
@@ -67,10 +69,13 @@ def merge_deep(*docs) -> dict:
 
 
 class BaseHandle:
-    """Base class for structured document handles."""
+    """Base class for structured document handles supporting both local and remote files."""
 
-    def __init__(self, path: str | Path):
-        self.path = Path(path)
+    def __init__(self, path: str | Path, *, cache_ttl: int = 0):
+        # Use File to unify local/remote handling
+        self.file = File(path)
+        # Use cached version if TTL provided, otherwise use file directly
+        self._reader = self.file.cache(cache_ttl) if cache_ttl else self.file
         self.document = {}
         self._loaded = False
 
@@ -88,9 +93,9 @@ class BaseHandle:
             self.load()
 
     def load(self) -> "BaseHandle":
-        """Load content from disk and return self for chaining."""
-        if self.path.exists():
-            content = self.path.read_text(encoding="utf-8")
+        """Load content from disk or remote location and return self for chaining."""
+        if self._reader.exists():
+            content = self._reader.read_text(encoding="utf-8")
             self._parse(content)
         else:
             self.document = {}
@@ -119,11 +124,15 @@ class BaseHandle:
         return self
 
     def save(self, path: str | Path | None = None) -> None:
-        """Save in-memory content to file (default: original path)."""
+        """Save in-memory content to file or remote location (default: original path)."""
         self._ensure_loaded()
-        target_path = Path(path) if path else self.path
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(self._dump(), encoding="utf-8")
+        target_file = File(path) if path else self.file
+
+        # Create parent directories for local files
+        if hasattr(target_file.path, "parent") and hasattr(target_file.path.parent, "mkdir"):
+            target_file.path.parent.mkdir(parents=True, exist_ok=True)
+
+        target_file.write_text(self._dump(), encoding="utf-8")
 
 
 class TOMLHandle(BaseHandle):
@@ -143,8 +152,8 @@ class TOMLHandle(BaseHandle):
 class YAMLHandle(BaseHandle):
     """Handle for YAML documents with format preservation."""
 
-    def __init__(self, path: str | Path):
-        super().__init__(path)
+    def __init__(self, path: str | Path, *, cache_ttl: int = 0):
+        super().__init__(path, cache_ttl=cache_ttl)
         # Each instance has its own YAML configuration
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
@@ -172,6 +181,7 @@ class JSONHandle(BaseHandle):
 def AutoHandle(path: str | Path) -> BaseHandle:
     """Auto-detecting factory that creates appropriate format handler.
 
+    Supports both local and remote files.
     Currently uses file extension detection.
     Can be upgraded to use libmagic or other detection methods in the future.
     """
@@ -183,8 +193,9 @@ def AutoHandle(path: str | Path) -> BaseHandle:
         ".json": JSONHandle,
     }
 
-    path = Path(path)
-    suffix = path.suffix.lower()
+    # Use File to handle both local and remote paths
+    file = File(path)
+    suffix = file.path.suffix.lower()
     handler_class = HANDLERS.get(suffix)
 
     if not handler_class:

@@ -28,8 +28,9 @@
 - 目前项目正在快速演进中, 不要为了兼容性而过度设计, 重构时不用考虑向后兼容。   
 
 ## Testing Guidelines
-- 框架：Pytest。测试命名 `tests/test_*.py`。新增特性或修复 MUST 附带测试；回归问题 MUST 先复现。
-- 建议在 e2e 用例中覆盖：任务发现、合并策略、格式保留与 `--dry-run` 行为。
+- 框架：Pytest。测试命名 `tests/test_*.py`。
+- 目前项目正在快速演进中, 先只实现e2e测试, 新增功能先整合到e2e测试中
+- e2e 用例中覆盖：任务发现、合并策略、格式保留与 `--dry-run` 行为。
 
 ## Commit & Pull Request Guidelines
 - 提交信息 MUST 遵循 Conventional Commits（例：`feat: implement deep merge semantics`、`fix: preserve yaml quotes`、`docs: align AGENTS with spec`）。

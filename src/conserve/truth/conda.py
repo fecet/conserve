@@ -1,9 +1,11 @@
 """Conda package information and Conda-PyPI mapping."""
 
+import json
 from pathlib import Path
 from typing import Optional, Dict, List, Union
 
-from .utils import CachedFetcher, MappingQuery
+from .utils import MappingQuery
+from conserve.utils import File
 
 
 def normalize_pypi_name(name: str) -> str:
@@ -36,19 +38,23 @@ class CondaMapping:
         """Initialize CondaMapping.
 
         Args:
-            cache_dir: Directory for caching mapping data. Defaults to /tmp/conserve.
-            ttl: Cache time-to-live in seconds (not implemented yet).
+            cache_dir: Directory for caching mapping data. Ignored - File uses automatic cache management.
+            ttl: Cache time-to-live in seconds.
         """
-        self._fetcher = CachedFetcher(
-            url=self.MAPPING_URL, cache_dir=cache_dir, cache_filename="conda_pypi_mapping.json", ttl=ttl
-        )
+        self._file = File(self.MAPPING_URL)
+        self._ttl = ttl
         self._mapping_data: Optional[Dict[str, str]] = None
         self._reverse_mapping: Optional[Dict[str, str]] = None
 
     def _ensure_loaded(self) -> None:
         """Ensure mapping data is loaded."""
         if self._mapping_data is None:
-            self._mapping_data = self._fetcher.get_data()
+            try:
+                cached = self._file.cache(ttl=self._ttl) if self._ttl else self._file
+                text = cached.read_text()
+                self._mapping_data = json.loads(text)
+            except Exception:
+                self._mapping_data = {}
 
     def _build_reverse_mapping(self) -> Dict[str, str]:
         """Build PyPI to Conda reverse mapping."""
@@ -102,7 +108,7 @@ class CondaMapping:
 
     def clear_cache(self) -> None:
         """Clear the local cache."""
-        self._fetcher.clear_cache()
+        # Just clear in-memory data, let cache expire naturally
         self._mapping_data = None
         self._reverse_mapping = None
 
