@@ -1,25 +1,16 @@
 """Conserve - Configuration fragment synchronizer with format preservation."""
 
-from .core import (
-    TOMLHandle,
-    YAMLHandle,
-    JSONHandle,
-    AutoHandle,
-    BaseHandle,
-    merge_deep,
+from .config import (
+    ConfigHandle as ConfigHandle,
+    TOMLHandle as TOMLHandle,
+    YAMLHandle as YAMLHandle,
+    JSONHandle as JSONHandle,
+    merge_deep as merge_deep,
 )
-from . import truth
-from .utils import File
-
-__all__ = [
-    "TOMLHandle",
-    "YAMLHandle",
-    "JSONHandle",
-    "AutoHandle",
-    "BaseHandle",
-    "merge_deep",
-    "truth",
-    "File",
-]
+from .core import BaseHandle as BaseHandle
+from .plan import plan as plan
+from .text import TextHandle as TextHandle
+from . import truth as truth
+from .utils import File as File
 
 __version__ = "0.1.0"

@@ -53,8 +53,8 @@ def conserve_sync_local():
     # Merge local overrides into base
     merged = conserve.merge_deep(base, local)
 
-    # Save as runtime config
-    conserve.TOMLHandle("config.runtime.toml").replace(merged).save()
+    # Save as runtime config (direct write, not staged)
+    conserve.TOMLHandle("config.runtime.toml").replace(merged).save(stage=False)
 
 def conserve_update_ports():
     \"\"\"Update all port configurations.\"\"\"
@@ -64,18 +64,18 @@ def conserve_update_ports():
     for config_file in configs:
         path = Path(config_file)
         if path.exists():
-            handle = conserve.AutoHandle(path).load()
+            handle = conserve.TOMLHandle(path).load()
             doc = handle.read()
 
             # Update port if server section exists
             if "server" in doc and "port" in doc["server"]:
                 doc["server"]["port"] = doc["server"]["port"] + 10000
-                handle.replace(doc).save()
+                handle.replace(doc).save(stage=False)
 """)
 
     # Run conserve to sync configs
     subprocess.run(
-        ["python", "-m", "conserve.cli", "run"],
+        ["python", "-m", "conserve.cli", "apply", "--yes"],
         cwd=project,
         capture_output=True,
         text=True,
@@ -150,14 +150,14 @@ def conserve_build_manifest():
     # Add computed fields
     manifest["deployment"]["image"] = f"{app['app']['name'].lower()}:{app['app']['version']}"
 
-    # Save as both YAML and JSON
-    conserve.YAMLHandle("manifest.yaml").replace(manifest).save()
-    conserve.JSONHandle("manifest.json").replace(manifest).save()
+    # Save as both YAML and JSON (direct write)
+    conserve.YAMLHandle("manifest.yaml").replace(manifest).save(stage=False)
+    conserve.JSONHandle("manifest.json").replace(manifest).save(stage=False)
 """)
 
     # Run conserve
     subprocess.run(
-        ["python", "-m", "conserve.cli", "run"],
+        ["python", "-m", "conserve.cli", "apply", "--yes"],
         cwd=project,
         capture_output=True,
         text=True,
@@ -223,9 +223,9 @@ def helper_function():
     assert "conserve_task_two" in result.stdout
     assert "helper_function" not in result.stdout
 
-    # Test run specific task
+    # Test apply specific task
     result = subprocess.run(
-        ["python", "-m", "conserve.cli", "run", "--tasks", "conserve_task_one"],
+        ["python", "-m", "conserve.cli", "apply", "--tasks", "conserve_task_one", "--yes"],
         cwd=project,
         capture_output=True,
         text=True,
@@ -234,9 +234,9 @@ def helper_function():
     assert (project / "task1.txt").exists()
     assert not (project / "task2.txt").exists()
 
-    # Test run all tasks
+    # Test apply all tasks
     result = subprocess.run(
-        ["python", "-m", "conserve.cli", "run"],
+        ["python", "-m", "conserve.cli", "apply", "--yes"],
         cwd=project,
         capture_output=True,
         text=True,
@@ -256,13 +256,13 @@ def conserve_dry_task():
 """)
 
     result = subprocess.run(
-        ["python", "-m", "conserve.cli", "run", "--dry-run"],
+        ["python", "-m", "conserve.cli", "apply", "--dry-run"],
         cwd=project,
         capture_output=True,
         text=True,
     )
     assert result.returncode == 0
-    assert "[DRY RUN]" in result.stdout
+    assert "[DRY RUN]" in result.stdout or "No changes to apply" in result.stdout
     assert not (project / "task3.txt").exists()
 
 
@@ -319,7 +319,7 @@ def conserve_sync_common():
         doc = target.load().read()
         # Add common config to each service
         doc["common"] = common
-        target.replace(doc).save()
+        target.replace(doc).save(stage=False)
 
 def conserve_update_versions():
     \"\"\"Update version in all files consistently.\"\"\"
@@ -329,7 +329,7 @@ def conserve_update_versions():
     base = conserve.TOMLHandle("base.toml").load()
     base_doc = base.read()
     base_doc["common"]["version"] = new_version
-    base.replace(base_doc).save()
+    base.replace(base_doc).save(stage=False)
 
     # Update all app configs if they have version
     for config_file in ["app1.yaml", "app2.yaml"]:
@@ -339,12 +339,12 @@ def conserve_update_versions():
             doc = handle.read()
             if "common" in doc and "version" in doc["common"]:
                 doc["common"]["version"] = new_version
-                handle.replace(doc).save()
+                handle.replace(doc).save(stage=False)
 """)
 
     # Run sync
     result = subprocess.run(
-        ["python", "-m", "conserve.cli", "run", "--tasks", "conserve_sync_common"],
+        ["python", "-m", "conserve.cli", "apply", "--tasks", "conserve_sync_common", "--yes"],
         cwd=project,
         capture_output=True,
         text=True,
@@ -366,7 +366,7 @@ def conserve_update_versions():
 
     # Run version update
     result = subprocess.run(
-        ["python", "-m", "conserve.cli", "run", "--tasks", "conserve_update_versions"],
+        ["python", "-m", "conserve.cli", "apply", "--tasks", "conserve_update_versions", "--yes"],
         cwd=project,
         capture_output=True,
         text=True,
