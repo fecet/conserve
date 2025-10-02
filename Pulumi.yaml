@@ -1,0 +1,6 @@
+name: conserve
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: .pixi/envs/default

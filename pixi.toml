@@ -4,6 +4,7 @@ channels = ["https://repo.prefix.dev/meta-forge", "conda-forge"]
 name = "conserve"
 platforms = ["linux-64"]
 version = "0.1.0"
+conda-pypi-map = { "https://repo.prefix.dev/meta-forge" = "pulumi-mapping.json" }
 
 [tasks]
 test = "pytest"
@@ -25,10 +26,17 @@ fsspec = "*"
 universal-pathlib = "*"
 pathvalidate = "*"
 aiohttp = "*"
+pulumi = "*"
+pulumi-sdk-python = "*"
+protobuf = "*"
 
 [pypi-dependencies]
 conserve = { path = ".", editable = true }
 schemastore = "*"
+pulumi-github = "*"
 
 [activation.env]
 PYTHONDONTWRITEBYTECODE = "1"
+PULUMI_BACKEND_URL = "file://."
+PULUMI_CONFIG_PASSPHRASE = "passwd"
+PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK = "true"
