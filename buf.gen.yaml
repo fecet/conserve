@@ -1,0 +1,17 @@
+version: v2
+managed:
+  enabled: true
+
+plugins:
+  # - remote: buf.build/community/danielgtaylor-betterproto:v1.2.5
+  - local: protoc-gen-python_betterproto2
+    out: src/conserve/_generated
+    opt:
+      - typing.310
+      - client_generation=sync
+      # - paths=source_relative
+
+inputs:
+  # Only generate code for deps.dev/api/v3
+  # deps.dev/submodules/googleapis is available for imports via buf.yaml workspace
+  - directory: deps.dev/api/v3
