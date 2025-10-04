@@ -14,4 +14,4 @@ plugins:
 inputs:
   # Only generate code for deps.dev/api/v3
   # deps.dev/submodules/googleapis is available for imports via buf.yaml workspace
-  - directory: deps.dev/api/v3
+  - directory: proto

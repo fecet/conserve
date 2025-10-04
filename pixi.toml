@@ -25,6 +25,8 @@ fsspec = "*"
 universal-pathlib = "*"
 pathvalidate = "*"
 aiohttp = "*"
+grpcio = "*"
+betterproto2 = "*"
 
 [feature.proto.dependencies]
 buf = "*"
@@ -34,14 +36,11 @@ grpcio = "*"
 [feature.proto.tasks]
 gen-proto = "buf generate"
 
-[feature.proto.pypi-dependencies]
-betterproto2-compiler = "*"
-
 [pypi-dependencies]
 conserve = { path = ".", editable = true }
 schemastore = "*"
 packageurl-python = "*"
-pytest-aiohttp = "*"
+githubkit = "*"
 
 [activation.env]
 PYTHONDONTWRITEBYTECODE = "1"
