@@ -35,6 +35,11 @@ Issues = "https://github.com/fecet/conserve/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/conserve"]
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests that require external resources (network, APIs)"
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py312"

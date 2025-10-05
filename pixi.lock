@@ -543,7 +543,7 @@ packages:
 - pypi: ./
   name: conserve
   version: 0.1.0
-  sha256: b04721e72b5f9ef349199d8b7b1c750c69e6ca16e717f9d9bafa315f79178ffb
+  sha256: 192bede4ec6f4415697930d7d617e6235eb5cbe50f71b825d107602ea41dc240
   requires_dist:
   - deepmerge
   - msgspec
