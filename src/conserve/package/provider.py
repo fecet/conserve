@@ -15,48 +15,13 @@ class PackageProvider(Protocol):
     """
 
     def get_latest_version(self, name: str) -> str | None:
-        """Get latest version for a package.
-
-        Args:
-            name: Package name
-
-        Returns:
-            Latest version string, or None if not found
-
-        Raises:
-            ValueError: If package not found or no versions available
-        """
+        """Query registry for default/stable version."""
         ...
 
-    def get_version_info(self, name: str, version: str) -> PackageVersionInfo:
-        """Get version metadata.
-
-        Args:
-            name: Package name
-            version: Version string
-
-        Returns:
-            PackageVersionInfo with version metadata
-
-        Raises:
-            ValueError: If version not found
-        """
-        ...
+    def get_version_info(self, name: str, version: str) -> PackageVersionInfo: ...
 
 
 def get_provider(purl_type: str) -> PackageProvider:
-    """Get appropriate provider for PURL type.
-
-    Args:
-        purl_type: PURL type (e.g. 'pypi', 'npm', 'github')
-
-    Returns:
-        Provider instance for the given type
-
-    Raises:
-        ValueError: If package type is not supported
-        NotImplementedError: If provider is not yet implemented
-    """
     if purl_type in ("pypi", "npm", "cargo", "maven", "rubygems", "nuget"):
         from .deps_dev_provider import DepsDevProvider
 

@@ -94,8 +94,8 @@ class ConfigHandle(BaseHandle):
 
     def replace(self, doc: dict) -> Self:
         """Replace in-memory content with new document and return self."""
-        self._ensure_loaded()
         self._replace_impl(doc)
+        self._loaded = True
         return self
 
     def _replace_impl(self, doc: dict):
@@ -119,6 +119,16 @@ class ConfigHandle(BaseHandle):
             raise ValueError(f"Unknown merge strategy: {strategy}")
         return self
 
+    def _delete_path(self, obj: dict, parts: list[str]) -> None:
+        """Delete a single path from object, silently succeed if not found."""
+        for part in parts[:-1]:
+            if not isinstance(obj, dict) or part not in obj:
+                return
+            obj = obj[part]
+
+        if isinstance(obj, dict) and parts[-1] in obj:
+            del obj[parts[-1]]
+
     def delete(self, *paths: str) -> Self:
         """Delete specified paths from document (idempotent).
 
@@ -127,17 +137,7 @@ class ConfigHandle(BaseHandle):
         """
         self._ensure_loaded()
         for path in paths:
-            parts = path.split(".")
-            obj = self.document
-            for part in parts[:-1]:
-                if isinstance(obj, dict) and part in obj:
-                    obj = obj[part]
-                else:
-                    break
-            else:
-                # Delete the final key if it exists
-                if isinstance(obj, dict) and parts[-1] in obj:
-                    del obj[parts[-1]]
+            self._delete_path(self.document, path.split("."))
         return self
 
     def save(self, path: str | Path | None = None, *, stage: bool | None = None) -> None:

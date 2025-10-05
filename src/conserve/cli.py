@@ -1,5 +1,7 @@
 """CLI interface for Conserve."""
 
+import inspect
+import sys
 import traceback
 from pathlib import Path
 
@@ -10,11 +12,6 @@ from .plan import plan
 
 
 def list_tasks(root: Path | None = None) -> None:
-    """List all discovered conserve tasks.
-
-    Args:
-        root: Root directory to search (default: current directory)
-    """
     root = root or Path.cwd()
     print(f"Discovering tasks in: {root}\n")
 
@@ -33,12 +30,6 @@ def list_tasks(root: Path | None = None) -> None:
 
 
 def info(task: str, root: Path | None = None) -> None:
-    """Show information about a specific task.
-
-    Args:
-        task: Task identifier (format: "module:function" or just "function")
-        root: Root directory to search (default: current directory)
-    """
     root = root or Path.cwd()
 
     all_tasks = discover_all_tasks(root)
@@ -58,9 +49,6 @@ def info(task: str, root: Path | None = None) -> None:
         if func.__doc__:
             print(f"\nDocstring:\n{func.__doc__}")
 
-        # Show source location
-        import inspect
-
         source_file = inspect.getfile(func)
         source_lines, line_num = inspect.getsourcelines(func)
         print(f"\nSource: {source_file}:{line_num}")
@@ -75,14 +63,7 @@ def apply(
     yes: bool = False,
     dry_run: bool = False,
 ) -> None:
-    """Apply changes with Plan Mode - preview changes before applying.
-
-    Args:
-        tasks: Specific tasks to run (format: "module:function"). If None, run all.
-        root: Root directory to search (default: current directory)
-        yes: Auto-confirm changes without prompting
-        dry_run: Preview changes only, don't apply them
-    """
+    """Preview and apply task changes with optional auto-confirmation."""
     root = root or Path.cwd()
 
     # Clear plan state to start fresh
@@ -130,53 +111,51 @@ def apply(
             plan.rollback()
             return
 
-    # Show preview if there are staged changes
-    if plan._staging_map:
-        print("\n" + "=" * 60)
-        print("CHANGES TO BE APPLIED:")
-        print("=" * 60)
-        print()
-
-        diff_summary = plan.get_diff_summary()
-        if diff_summary:
-            print(diff_summary)
-        else:
-            # No actual changes detected
-            print("No changes detected (files are already up to date)")
-            return
-
-        if not dry_run:
-            print()
-            # Prompt for confirmation unless --yes flag is used
-            if yes:
-                print("Applying changes...")
-                num_files = len(plan._staging_map)
-                plan.commit()
-                print(f"✓ Successfully applied changes to {num_files} file(s)")
-            else:
-                try:
-                    response = input("Apply these changes? [y/N]: ")
-                    if response.lower() in ["y", "yes"]:
-                        num_files = len(plan._staging_map)
-                        plan.commit()
-                        print(f"✓ Successfully applied changes to {num_files} file(s)")
-                    else:
-                        plan.rollback()
-                        print("Changes cancelled.")
-                except KeyboardInterrupt:
-                    print("\nCancelled.")
-                    plan.rollback()
-        else:
-            print("\n[DRY RUN] No changes were applied.")
-            plan.rollback()
-    else:
+    if not plan._staging_map:
         print("\nNo changes to apply.")
+        return
+
+    print("\n" + "=" * 60)
+    print("CHANGES TO BE APPLIED:")
+    print("=" * 60)
+    print()
+
+    diff_summary = plan.get_diff_summary()
+    if not diff_summary:
+        print("No changes detected (files are already up to date)")
+        return
+
+    print(diff_summary)
+
+    if dry_run:
+        print("\n[DRY RUN] No changes were applied.")
+        plan.rollback()
+        return
+
+    print()
+    if yes:
+        print("Applying changes...")
+        num_files = len(plan._staging_map)
+        plan.commit()
+        print(f"✓ Successfully applied changes to {num_files} file(s)")
+        return
+
+    try:
+        response = input("Apply these changes? [y/N]: ")
+        if response.lower() in ["y", "yes"]:
+            num_files = len(plan._staging_map)
+            plan.commit()
+            print(f"✓ Successfully applied changes to {num_files} file(s)")
+        else:
+            plan.rollback()
+            print("Changes cancelled.")
+    except KeyboardInterrupt:
+        print("\nCancelled.")
+        plan.rollback()
 
 
 def main() -> None:
     """Conserve - Configuration fragment synchronizer."""
-    import sys
-
     if len(sys.argv) < 2:
         print("Usage: conserve <command> [options]")
         print("\nCommands:")
