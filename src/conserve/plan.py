@@ -3,7 +3,7 @@
 from pathlib import Path
 from uuid import uuid4
 import difflib
-from .utils import File
+from .file import File
 
 
 class Plan:

@@ -10,7 +10,7 @@ from .config import (
 from .core import BaseHandle as BaseHandle
 from .plan import plan as plan
 from .text import TextHandle as TextHandle
-from .utils import File as File
+from .file import File as File
 from .package import Package as Package, PackageVersionInfo as PackageVersionInfo
 from . import package as package
 

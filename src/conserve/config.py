@@ -15,7 +15,7 @@ from tomlkit.items import Table as TOMLTable
 from tomlkit.toml_document import TOMLDocument
 
 from .core import BaseHandle
-from .utils import File
+from .file import File
 
 
 def format_preserving_merge(config, path, base, nxt):

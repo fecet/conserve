@@ -5,7 +5,7 @@ from pathlib import Path
 import schemastore
 from datamodel_code_generator import DataModelType, InputFileType, PythonVersion, generate
 
-from conserve.utils import to_valid_filename
+from conserve.file import to_valid_filename
 
 
 def query_schema(name: str) -> dict | None:

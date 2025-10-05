@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from .utils import File
+from .file import File
 
 
 class BaseHandle:

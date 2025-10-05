@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from conserve.utils import File
+from conserve.file import File
 
 
 def normalize_pypi_name(name: str) -> str:

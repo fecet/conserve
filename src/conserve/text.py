@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Self
 
 from .core import BaseHandle
-from .utils import File
+from .file import File
 
 
 class TextHandle(BaseHandle):
