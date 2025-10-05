@@ -5,6 +5,8 @@ from __future__ import annotations
 from githubkit import GitHub
 from githubkit.exception import RequestFailed
 
+from .types import PackageVersionInfo
+
 
 class GitHubClient:
     """Client for GitHub API (singleton)."""
@@ -94,52 +96,31 @@ class GitHubProvider:
 
         return release.get("tag_name")
 
-    def get_package_info(self, name: str) -> dict | None:
-        """Get repository metadata without specific version.
-
-        Args:
-            name: Repository name in 'owner/repo' format
-
-        Returns:
-            Dictionary with repository metadata (name, description, releases)
-        """
-        owner, repo = self._parse_name(name)
-        repo_info = self._client.get_repository(owner, repo)
-
-        if not repo_info:
-            return None
-
-        releases = self._client.list_releases(owner, repo) or []
-
-        return {
-            "name": name,
-            "description": repo_info.get("description"),
-            "url": repo_info.get("html_url"),
-            "stars": repo_info.get("stargazers_count"),
-            "releases": [r.get("tag_name") for r in releases],
-        }
-
-    def get_version_info(self, name: str, version: str) -> dict | None:
-        """Get specific release metadata.
+    def get_version_info(self, name: str, version: str) -> PackageVersionInfo:
+        """Get release metadata.
 
         Args:
             name: Repository name in 'owner/repo' format
             version: Release tag name
 
         Returns:
-            Dictionary with release metadata
+            PackageVersionInfo with release metadata
+
+        Raises:
+            ValueError: If release not found
         """
         owner, repo = self._parse_name(name)
         release = self._client.get_release_by_tag(owner, repo, version)
 
         if not release:
-            return None
+            raise ValueError(f"Release not found: {name}@{version}")
 
         return {
+            "version": release.get("tag_name", version),
+            "published_at": release.get("published_at"),
             "tag_name": release.get("tag_name"),
             "name": release.get("name"),
             "body": release.get("body"),
-            "published_at": release.get("published_at"),
             "prerelease": release.get("prerelease"),
             "assets": [
                 {"name": asset.get("name"), "download_url": asset.get("browser_download_url")}

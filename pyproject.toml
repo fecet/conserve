@@ -39,6 +39,8 @@ packages = ["src/conserve"]
 markers = [
     "integration: marks tests that require external resources (network, APIs)"
 ]
+timeout = 30
+timeout_method = "thread"
 
 [tool.ruff]
 line-length = 120

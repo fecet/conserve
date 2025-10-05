@@ -7,6 +7,7 @@ from typing import Self
 from packageurl import PackageURL
 
 from .provider import PackageProvider, get_provider
+from .types import PackageVersionInfo
 
 
 class Package:
@@ -82,16 +83,35 @@ class Package:
 
         return Package(new_purl)
 
-    def info(self) -> dict | None:
-        """Get complete metadata dictionary.
+    def info(self) -> PackageVersionInfo:
+        """Get package version metadata.
 
         Returns:
-            - Success: dictionary containing complete package metadata
-              - PyPI/npm: includes version, author, dependencies, etc.
-              - Git: includes commit, author, message, etc.
-              - Specific field structure determined by package type
-            - Missing data (package not found, cannot resolve reference): None
-            - Error (network failure, etc.): raises exception
+            PackageVersionInfo containing version metadata.
+
+            Always returns detailed version information:
+            - If version specified: returns that version's metadata
+            - If no version: automatically fetches latest version's metadata
+
+            Core fields (all providers):
+                version: Version string
+                published_at: Publication timestamp
+
+            DepsDevProvider additional fields:
+                licenses: SPDX license identifiers
+                links: Documentation and repository links
+                is_default: Whether this is the default version
+                registries: Package registry URLs
+
+            GitHubProvider additional fields:
+                tag_name: Git tag name
+                name: Release name
+                body: Release notes
+                prerelease: Whether this is a pre-release
+                assets: Downloadable assets
+
+        Raises:
+            ValueError: If package or version not found
         """
         provider = self._ensure_provider()
         full_name = self._get_full_name()
@@ -99,8 +119,6 @@ class Package:
         if self.version:
             return provider.get_version_info(full_name, self.version)
         else:
-            info = provider.get_package_info(full_name)
-            if info:
-                # Add type to info
-                info["type"] = self._purl.type
-            return info
+            # Auto-fetch latest version's detailed info
+            latest_version = provider.get_latest_version(full_name)
+            return provider.get_version_info(full_name, latest_version)

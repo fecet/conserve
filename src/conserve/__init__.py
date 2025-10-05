@@ -12,6 +12,6 @@ from .plan import plan as plan
 from .text import TextHandle as TextHandle
 from . import truth as truth
 from .utils import File as File
-from .package import Package as Package
+from .package import Package as Package, PackageVersionInfo as PackageVersionInfo
 
 __version__ = "0.1.0"

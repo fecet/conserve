@@ -27,6 +27,7 @@ pathvalidate = "*"
 aiohttp = "*"
 grpcio = "*"
 betterproto2 = "*"
+pytest-timeout = "*"
 
 [feature.proto.dependencies]
 buf = "*"

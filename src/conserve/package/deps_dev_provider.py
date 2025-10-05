@@ -20,6 +20,8 @@ from conserve._generated.deps_dev.v3 import (
     VersionKey,
 )
 
+from .types import PackageVersionInfo
+
 
 class DepsDevClient:
     """Client for deps.dev gRPC API (singleton)."""
@@ -158,25 +160,7 @@ class DepsDevProvider:
 
         raise ValueError(f"No versions available for: {name}")
 
-    def get_package_info(self, name: str) -> dict | None:
-        """Get package metadata without specific version.
-
-        Args:
-            name: Package name
-
-        Returns:
-            Dictionary with package metadata (name, type, versions)
-        """
-        package_info = self._client.get_package(self._system, name)
-        if not package_info:
-            return None
-
-        return {
-            "name": name,
-            "versions": [v.version_key.version for v in package_info.versions if v.version_key],
-        }
-
-    def get_version_info(self, name: str, version: str) -> dict | None:
+    def get_version_info(self, name: str, version: str) -> PackageVersionInfo:
         """Get specific version metadata.
 
         Args:
@@ -184,11 +168,14 @@ class DepsDevProvider:
             version: Version string
 
         Returns:
-            Dictionary with version metadata
+            PackageVersionInfo with version metadata
+
+        Raises:
+            ValueError: If version not found
         """
         version_info = self._client.get_version(self._system, name, version)
         if not version_info:
-            return None
+            raise ValueError(f"Version not found: {name}@{version}")
 
         return {
             "version": version,

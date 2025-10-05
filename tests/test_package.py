@@ -50,19 +50,19 @@ def test_package_info():
     """Test getting package metadata."""
     pkg = Package("pypi/requests@2.31.0")
     info = pkg.info()
-    assert info is not None
     assert "version" in info
     assert info["version"] == "2.31.0"
 
 
 @pytest.mark.integration
 def test_package_info_no_version():
-    """Test getting package info without version."""
+    """Test getting package info without version (auto-fetches latest)."""
     pkg = Package("pypi/requests")
     info = pkg.info()
-    assert info is not None
-    assert "versions" in info
-    assert len(info["versions"]) > 0
+    assert "version" in info
+    assert info["version"] is not None
+    # Should have detailed version info (not just version list)
+    assert "licenses" in info or "published_at" in info
 
 
 @pytest.mark.integration
@@ -96,14 +96,13 @@ def test_package_latest_github():
 
 @pytest.mark.integration
 def test_package_info_github():
-    """Test getting GitHub repository metadata."""
+    """Test getting GitHub repository metadata (auto-fetches latest)."""
     pkg = Package("github/pytorch/pytorch")
     info = pkg.info()
-    assert info is not None
-    assert "name" in info
-    assert info["name"] == "pytorch/pytorch"
-    assert "releases" in info
-    assert len(info["releases"]) > 0
+    assert "version" in info
+    assert info["version"] is not None
+    # Should have release-specific info
+    assert "tag_name" in info or "published_at" in info
 
 
 @pytest.mark.integration
@@ -111,7 +110,6 @@ def test_package_info_github_with_version():
     """Test getting specific GitHub release info."""
     pkg = Package("github/pytorch/pytorch@v2.0.0")
     info = pkg.info()
-    assert info is not None
     assert "tag_name" in info
     assert info["tag_name"] == "v2.0.0"
     assert "assets" in info

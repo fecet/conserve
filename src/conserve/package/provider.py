@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from .types import PackageVersionInfo
+
 
 class PackageProvider(Protocol):
     """Abstract interface for package metadata providers.
@@ -26,26 +28,18 @@ class PackageProvider(Protocol):
         """
         ...
 
-    def get_package_info(self, name: str) -> dict | None:
-        """Get package metadata without specific version.
-
-        Args:
-            name: Package name
-
-        Returns:
-            Dictionary with package metadata, or None if not found
-        """
-        ...
-
-    def get_version_info(self, name: str, version: str) -> dict | None:
-        """Get specific version metadata.
+    def get_version_info(self, name: str, version: str) -> PackageVersionInfo:
+        """Get version metadata.
 
         Args:
             name: Package name
             version: Version string
 
         Returns:
-            Dictionary with version metadata, or None if not found
+            PackageVersionInfo with version metadata
+
+        Raises:
+            ValueError: If version not found
         """
         ...
 
