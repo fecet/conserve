@@ -22,6 +22,20 @@ def test_package_creation_full_purl():
     assert pkg.version == "2.31.0"
 
 
+def test_package_creation_colon_format():
+    """Accept type:name shorthand (no version)."""
+    pkg = Package("pypi:requests")
+    assert pkg.version is None
+    assert pkg.type == "pypi"
+
+
+def test_package_creation_colon_with_version():
+    """Accept type:name@version shorthand."""
+    pkg = Package("pypi:requests@2.31.0")
+    assert pkg.version == "2.31.0"
+    assert pkg.type == "pypi"
+
+
 def test_package_invalid_type():
     """Test Package creation with unsupported type raises on method call."""
     pkg = Package("invalid-type/package")
@@ -79,6 +93,13 @@ def test_package_creation_github():
     assert pkg.version is None
 
 
+def test_package_creation_github_colon_format():
+    """Accept github:owner/repo shorthand."""
+    pkg = Package("github:pytorch/pytorch")
+    assert pkg.version is None
+    assert pkg.type == "github"
+
+
 def test_package_creation_github_with_version():
     """Test Package creation with GitHub PURL and version."""
     pkg = Package("github/pytorch/pytorch@v2.0.0")
@@ -113,3 +134,29 @@ def test_package_info_github_with_version():
     assert "tag_name" in info
     assert info["tag_name"] == "v2.0.0"
     assert "assets" in info
+
+
+def test_conversion_wrong_type_raises():
+    """Conversion methods must validate source type."""
+    with pytest.raises(ValueError):
+        Package("pypi:requests").to_pypi()
+    with pytest.raises(ValueError):
+        Package("npm:lodash").to_conda()
+
+
+@pytest.mark.integration
+def test_to_conda_from_pypi_returns_package():
+    """pypi->conda mapping should yield a new Package."""
+    pkg = Package("pypi:requests")
+    target = pkg.to_conda()
+    assert isinstance(target, Package)
+    assert target.type == "conda"
+
+
+@pytest.mark.integration
+def test_to_pypi_from_conda_returns_package():
+    """conda->pypi mapping should yield a new Package."""
+    pkg = Package("conda:numpy")
+    target = pkg.to_pypi()
+    assert isinstance(target, Package)
+    assert target.type == "pypi"

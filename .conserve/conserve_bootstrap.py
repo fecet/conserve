@@ -5,7 +5,7 @@ from packaging.requirements import Requirement
 
 
 def conserve_sync_dependencies():
-    """Sync dependencies from @pyproject.toml to @pixi.toml using truth.conda mapping."""
+    """Sync dependencies from @pyproject.toml to @pixi.toml using package.pypi_to_conda mapping."""
 
     pyproject = conserve.TOMLHandle("pyproject.toml").load().read()
 
@@ -25,7 +25,7 @@ def conserve_sync_dependencies():
         version = str(req.specifier) or "*"
 
         # Try PyPI to Conda conversion (now handles normalization internally)
-        conda_name = conserve.truth.conda.query_conda(pkg_name)
+        conda_name = conserve.package.pypi_to_conda(pkg_name)
 
         if conda_name:
             # Package exists in Conda (with mapped or same name)

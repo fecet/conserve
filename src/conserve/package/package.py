@@ -10,25 +10,33 @@ from .provider import PackageProvider, get_provider
 from .types import PackageVersionInfo
 
 
+def _normalize_input(s: str) -> str:
+    """Normalize user input into full PURL string.
+
+    Accepts three shorthands:
+    - pkg:type/name[@v]
+    - type/name[@v]
+    - type:name[@v]
+    """
+    # Keep as-is if already a full PURL
+    if s.startswith("pkg:"):
+        return s
+
+    # Allow colon shorthand: type:name -> type/name (only first ':')
+    if ":" in s:
+        s = s.replace(":", "/", 1)
+
+    # Ensure full PURL prefix
+    return f"pkg:{s}"
+
+
 class Package:
     """Package object encapsulating PURL query interface."""
 
     def __init__(self, purl: str):
-        """Initialize Package from PURL string.
-
-        Args:
-            purl: Package URL in short format (type/name[@version]) or
-                  full PURL format (pkg:type/name[@version])
-
-        Raises:
-            ValueError: If PURL format is invalid
-        """
-        # Normalize short format to full PURL
-        if not purl.startswith("pkg:"):
-            purl = f"pkg:{purl}"
-
+        """Initialize Package from string in short or full PURL forms."""
         try:
-            self._purl = PackageURL.from_string(purl)
+            self._purl = PackageURL.from_string(_normalize_input(purl))
         except ValueError as e:
             raise ValueError(f"Invalid PURL format: {purl}") from e
 
@@ -38,6 +46,11 @@ class Package:
     def version(self) -> str | None:
         """Get version from PURL (None if not specified in PURL)."""
         return self._purl.version
+
+    @property
+    def type(self) -> str:
+        """Get package system type (e.g., 'pypi', 'conda', 'github')."""
+        return self._purl.type
 
     def _ensure_provider(self) -> PackageProvider:
         """Ensure provider is initialized and package type is supported.
@@ -122,3 +135,35 @@ class Package:
             # Auto-fetch latest version's detailed info
             latest_version = provider.get_latest_version(full_name)
             return provider.get_version_info(full_name, latest_version)
+
+    def to_pypi(self) -> Self:
+        """Convert Conda package to a new PyPI Package.
+
+        Raises:
+            ValueError: If not a conda package or mapping not found.
+        """
+        if self._purl.type != "conda":
+            raise ValueError(f"to_pypi() only available for conda packages, got: {self._purl.type}")
+
+        from .conda import conda_to_pypi
+
+        mapped = conda_to_pypi(self._purl.name)
+        if not mapped:
+            raise ValueError(f"No PyPI mapping for conda package: {self._purl.name}")
+        return Package(f"pypi:{mapped}")
+
+    def to_conda(self) -> Self:
+        """Convert PyPI package to a new Conda Package.
+
+        Raises:
+            ValueError: If not a pypi package or mapping not found.
+        """
+        if self._purl.type != "pypi":
+            raise ValueError(f"to_conda() only available for pypi packages, got: {self._purl.type}")
+
+        from .conda import pypi_to_conda
+
+        mapped = pypi_to_conda(self._purl.name)
+        if not mapped:
+            raise ValueError(f"No Conda mapping for PyPI package: {self._purl.name}")
+        return Package(f"conda:{mapped}")
